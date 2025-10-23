@@ -1,0 +1,11 @@
+﻿user_id,name,user_email,age,registration_date,purchase_amount
+1,Alice,alice@example.com,30,2024-01-15,100.5
+2,Bob,bob@example,25,2024-02-20,75
+3,Charlie,,45,2024-03-10,210.75
+4,David,david@example.com,-5,2024-04-05,50.25
+5,Eve,eve@example.com,999,2024-05-18,
+6,Frank,frank@example.com,35,2024-06-22,150
+7,Grace,grace@sample.net,28,2024-07-30,99.99
+8,Heidi,heidi@test,42,2024-08-11,-20
+9,Ivan,ivan@example.com,22,2024-09-01,120
+10,Judy,judy@example.com,31,2024-10-05,88.88
