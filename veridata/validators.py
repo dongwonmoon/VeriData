@@ -9,6 +9,15 @@ logger = logging.getLogger(__name__)
 
 
 def _snake_to_expect_class(expectation_type: str):
+    """
+    Converts a snake_case expectation type string to a Great Expectations class name.
+
+    Args:
+        expectation_type (str): The snake_case expectation type string.
+
+    Returns:
+        The Great Expectations class.
+    """
     parts = expectation_type.strip().split("_")
     if parts[0] != "expect":
         parts.insert(0, "expect")
@@ -23,14 +32,33 @@ def _snake_to_expect_class(expectation_type: str):
 
 
 class BaseValidator(ABC):
+    """
+    Abstract base class for data validators.
+    """
+
     @abstractmethod
     def validate(
         self, df: pd.DataFrame, column: str, rules_json_str: str
     ) -> dict:
+        """
+        Validates a DataFrame column based on a set of rules.
+
+        Args:
+            df (pd.DataFrame): The DataFrame to validate.
+            column (str): The column to validate.
+            rules_json_str (str): A JSON string containing the validation rules.
+
+        Returns:
+            dict: The validation results.
+        """
         pass
 
 
 class GreatExpectationsValidator(BaseValidator):
+    """
+    A data validator that uses Great Expectations to validate data.
+    """
+
     def __init__(self):
         pass
 
@@ -41,6 +69,18 @@ class GreatExpectationsValidator(BaseValidator):
         rules_json_str: str,
         open_docs: bool = False,
     ) -> dict:
+        """
+        Validates a DataFrame column using Great Expectations.
+
+        Args:
+            df (pd.DataFrame): The DataFrame to validate.
+            column (str): The column to validate.
+            rules_json_str (str): A JSON string containing the validation rules.
+            open_docs (bool, optional): Whether to open the validation report in a browser. Defaults to False.
+
+        Returns:
+            dict: The validation results.
+        """
         logger.info(f"Validating data for {column}...")
         try:
             rules_list = json.loads(rules_json_str)

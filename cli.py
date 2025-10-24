@@ -23,6 +23,15 @@ app = typer.Typer()
 
 
 def get_loader(datasource_config: dict) -> BaseLoader:
+    """
+    Initializes and returns a data loader based on the datasource configuration.
+
+    Args:
+        datasource_config (dict): The datasource configuration.
+
+    Returns:
+        BaseLoader: An instance of a data loader.
+    """
     ds_type = datasource_config.get("type")
     logger.info(f"Initializing DataLoader (Type: {ds_type})...")
 
@@ -49,7 +58,7 @@ def run(
     ),
 ):
     """
-    VeriData 파이프라인을 config.yml 파일을 기반으로 실행합니다.
+    Runs the VeriData pipeline based on the provided config.yml file.
     """
     logger.info(f"Loading configuration from: {config_path}")
 
@@ -134,6 +143,9 @@ def document(
         help="Path to the VeriData config.yml file.",
     )
 ):
+    """
+    Generates documentation for the specified columns in the config.yml file.
+    """
     logger.info(f"Loading configuration from: {config_path}")
 
     try:

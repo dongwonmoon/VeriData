@@ -70,6 +70,15 @@ DOC_SUGGESTER_PROMPT = """
 
 
 def parse_llm_rules(raw_text: str):
+    """
+    Parses the raw text output from an LLM to extract a JSON array of rules.
+
+    Args:
+        raw_text (str): The raw text output from the LLM.
+
+    Returns:
+        list: A list of rule dictionaries.
+    """
     array_match = re.search(r"\[[\s\S]*\]", raw_text)
     if array_match:
         try:
@@ -101,13 +110,36 @@ def parse_llm_rules(raw_text: str):
 
 
 class BaseSuggester(ABC):
+    """
+    Abstract base class for suggesters.
+    """
+
     @abstractmethod
     def suggest(self, profile: dict) -> str:
+        """
+        Suggests rules or documentation based on a data profile.
+
+        Args:
+            profile (dict): The data profile.
+
+        Returns:
+            str: The suggested rules or documentation as a string.
+        """
         pass
 
 
 class OllamaRuleSuggester(BaseSuggester):
+    """
+    A rule suggester that uses an Ollama model to suggest Great Expectations rules.
+    """
+
     def __init__(self, model: str = "gemma3:1b"):
+        """
+        Initializes the OllamaRuleSuggester.
+
+        Args:
+            model (str, optional): The name of the Ollama model to use. Defaults to "gemma3:1b".
+        """
         logger.info(f"Initializing OllamaRuleSuggester with model '{model}'...")
         self.llm = ChatOllama(model=model, format="json")
         self.prompt_template = ChatPromptTemplate.from_template(
@@ -117,6 +149,15 @@ class OllamaRuleSuggester(BaseSuggester):
         self.chain = self.prompt_template | self.llm | self.parser
 
     def suggest(self, profile: dict) -> str:
+        """
+        Suggests Great Expectations rules based on a data profile.
+
+        Args:
+            profile (dict): The data profile.
+
+        Returns:
+            str: The suggested rules as a JSON string.
+        """
         logger.info(
             f"Suggesting rules via LLM for '{profile['column_name']}'..."
         )
@@ -128,7 +169,17 @@ class OllamaRuleSuggester(BaseSuggester):
 
 
 class OllamaDocSuggester(BaseSuggester):
+    """
+    A documentation suggester that uses an Ollama model to suggest column descriptions.
+    """
+
     def __init__(self, model: str = "gemma3:1b"):
+        """
+        Initializes the OllamaDocSuggester.
+
+        Args:
+            model (str, optional): The name of the Ollama model to use. Defaults to "gemma3:1b".
+        """
         logger.info(f"Initializing OllamaDocSuggester with model '{model}'...")
 
         self.llm = ChatOllama(model=model)
@@ -140,6 +191,15 @@ class OllamaDocSuggester(BaseSuggester):
         self.chain = self.prompt_template | self.llm | self.parser
 
     def suggest(self, profile: dict) -> str:
+        """
+        Suggests a column description based on a data profile.
+
+        Args:
+            profile (dict): The data profile.
+
+        Returns:
+            str: The suggested column description.
+        """
         logger.info(
             f"Suggesting documentation via LLM for '{profile['column_name']}'..."
         )
@@ -150,7 +210,17 @@ class OllamaDocSuggester(BaseSuggester):
 
 
 class OpenAIRuleSuggester(BaseSuggester):
+    """
+    A rule suggester that uses an OpenAI model to suggest Great Expectations rules.
+    """
+
     def __init__(self, model: str = "gpt-4o-mini"):
+        """
+        Initializes the OpenAIRuleSuggester.
+
+        Args:
+            model (str, optional): The name of the OpenAI model to use. Defaults to "gpt-4o-mini".
+        """
         logger.info(f"Initializing OpenAIRuleSuggester with model '{model}'...")
 
         if not os.getenv("OPENAI_API_KEY"):
@@ -168,6 +238,15 @@ class OpenAIRuleSuggester(BaseSuggester):
         self.chain = self.prompt_template | self.llm | self.parser
 
     def suggest(self, profile: dict) -> str:
+        """
+        Suggests Great Expectations rules based on a data profile.
+
+        Args:
+            profile (dict): The data profile.
+
+        Returns:
+            str: The suggested rules as a JSON string.
+        """
         logger.info(
             f"Suggesting rules via LLM for '{profile['column_name']}'..."
         )

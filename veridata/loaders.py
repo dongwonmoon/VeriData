@@ -7,13 +7,39 @@ logger = logging.getLogger(__name__)
 
 
 class BaseLoader(ABC):
+    """
+    Abstract base class for data loaders.
+    """
+
     @abstractmethod
     def load(self, config: dict) -> pd.DataFrame:
+        """
+        Loads data from a source and returns a pandas DataFrame.
+
+        Args:
+            config (dict): The data source configuration.
+
+        Returns:
+            pd.DataFrame: The loaded data as a pandas DataFrame.
+        """
         pass
 
 
 class CsvLoader(BaseLoader):
+    """
+    Loads data from a CSV file.
+    """
+
     def load(self, config: dict) -> pd.DataFrame:
+        """
+        Loads data from a CSV file and returns a pandas DataFrame.
+
+        Args:
+            config (dict): The data source configuration.
+
+        Returns:
+            pd.DataFrame: The loaded data as a pandas DataFrame.
+        """
         csv_path = config.get("path")
         if not csv_path:
             logger.error("CSV 'path' not specified in config.")
@@ -28,7 +54,20 @@ class CsvLoader(BaseLoader):
 
 
 class SqlLoader(BaseLoader):
+    """
+    Loads data from a SQL database.
+    """
+
     def load(self, config: dict) -> pd.DataFrame:
+        """
+        Loads data from a SQL database and returns a pandas DataFrame.
+
+        Args:
+            config (dict): The data source configuration.
+
+        Returns:
+            pd.DataFrame: The loaded data as a pandas DataFrame.
+        """
         logger.info(f"Loading data from SQL database...")
         try:
             db_type = config.get("type")
