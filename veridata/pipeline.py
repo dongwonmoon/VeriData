@@ -33,7 +33,11 @@ class VeriDataPipeline:
         self.validator = validator
 
     def run(
-        self, df: pd.DataFrame, column: str, open_docs: bool = False
+        self,
+        df: pd.DataFrame,
+        column: str,
+        open_docs: bool = False,
+        relationships: list = None,
     ) -> dict:
         """
         Runs the pipeline for a given DataFrame and column.
@@ -50,7 +54,9 @@ class VeriDataPipeline:
 
         profile = self.profiler.profile(df, column)
         if profile:
-            suggested_rules = self.suggester.suggest(profile)
+            suggested_rules = self.suggester.suggest(
+                profile=profile, relationships=relationships
+            )
             validation_result = self.validator.validate(
                 df, column, suggested_rules, open_docs=open_docs
             )

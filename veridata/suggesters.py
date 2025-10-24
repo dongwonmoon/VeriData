@@ -115,7 +115,7 @@ class BaseSuggester(ABC):
     """
 
     @abstractmethod
-    def suggest(self, profile: dict) -> str:
+    def suggest(self, profile: dict, relationships: list = None) -> str:
         """
         Suggests rules or documentation based on a data profile.
 
@@ -142,13 +142,11 @@ class OllamaRuleSuggester(BaseSuggester):
         """
         logger.info(f"Initializing OllamaRuleSuggester with model '{model}'...")
         self.llm = ChatOllama(model=model, format="json")
-        self.prompt_template = ChatPromptTemplate.from_template(
-            RULE_SUGGESTER_PROMPT
-        )
+        self.prompt_template = ChatPromptTemplate.from_template(RULE_SUGGESTER_PROMPT)
         self.parser = StrOutputParser()
         self.chain = self.prompt_template | self.llm | self.parser
 
-    def suggest(self, profile: dict) -> str:
+    def suggest(self, profile: dict, relationships: list = None) -> str:
         """
         Suggests Great Expectations rules based on a data profile.
 
@@ -158,13 +156,28 @@ class OllamaRuleSuggester(BaseSuggester):
         Returns:
             str: The suggested rules as a JSON string.
         """
-        logger.info(
-            f"Suggesting rules via LLM for '{profile['column_name']}'..."
-        )
+        logger.info(f"Suggesting rules via LLM for '{profile['column_name']}'...")
         profile_text = json.dumps(profile, indent=2)
         response = self.chain.invoke({"profile_text": profile_text})
         logger.info(f"LLM Raw Output: {response}")
         rules_list = parse_llm_rules(response)
+
+        if relationships:
+            logger.info(
+                f"Found {len(relationships)} relationships for '{profile['column_name']}'. Adding FK Rules"
+            )
+            for rel in relationships:
+                fk_rule = {
+                    "expectation_type": "expect_column_values_to_exist_in_other_table",
+                    "kwargs": {
+                        "column": rel["from_column"],
+                        "other_table_query": rel["to_table_query"],
+                        "other_table_column": rel["to_column"],
+                    },
+                }
+                rules_list.append(fk_rule)
+                logger.info(f"Added FK rule: {fk_rule}")
+
         return json.dumps(rules_list, indent=2)
 
 
@@ -184,13 +197,11 @@ class OllamaDocSuggester(BaseSuggester):
 
         self.llm = ChatOllama(model=model)
 
-        self.prompt_template = ChatPromptTemplate.from_template(
-            DOC_SUGGESTER_PROMPT
-        )
+        self.prompt_template = ChatPromptTemplate.from_template(DOC_SUGGESTER_PROMPT)
         self.parser = StrOutputParser()
         self.chain = self.prompt_template | self.llm | self.parser
 
-    def suggest(self, profile: dict) -> str:
+    def suggest(self, profile: dict, relationships: list = None) -> str:
         """
         Suggests a column description based on a data profile.
 
@@ -231,13 +242,11 @@ class OpenAIRuleSuggester(BaseSuggester):
             model_kwargs={"response_format": {"type": "json_object"}},
         )
 
-        self.prompt_template = ChatPromptTemplate.from_template(
-            RULE_SUGGESTER_PROMPT
-        )
+        self.prompt_template = ChatPromptTemplate.from_template(RULE_SUGGESTER_PROMPT)
         self.parser = StrOutputParser()
         self.chain = self.prompt_template | self.llm | self.parser
 
-    def suggest(self, profile: dict) -> str:
+    def suggest(self, profile: dict, relationships: list = None) -> str:
         """
         Suggests Great Expectations rules based on a data profile.
 
@@ -247,13 +256,28 @@ class OpenAIRuleSuggester(BaseSuggester):
         Returns:
             str: The suggested rules as a JSON string.
         """
-        logger.info(
-            f"Suggesting rules via LLM for '{profile['column_name']}'..."
-        )
+        logger.info(f"Suggesting rules via LLM for '{profile['column_name']}'...")
         profile_text = json.dumps(profile, indent=2)
 
         response = self.chain.invoke({"profile_text": profile_text})
         logger.info(f"LLM Raw Output: {response}")
 
         rules_list = parse_llm_rules(response)
+
+        if relationships:
+            logger.info(
+                f"Found {len(relationships)} relationships for this column. Adding FK rules."
+            )
+            for rel in relationships:
+                fk_rule = {
+                    "expectation_type": "expect_column_values_to_exist_in_other_table",
+                    "kwargs": {
+                        "column": rel["from_column"],
+                        "other_table_query": rel["to_table_query"],
+                        "other_table_column": rel["to_column"],
+                    },
+                }
+                rules_list.append(fk_rule)
+                logger.info(f"Added FK rule: {fk_rule}")
+
         return json.dumps(rules_list, indent=2)

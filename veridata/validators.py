@@ -4,6 +4,7 @@ import json
 import great_expectations as gx
 from abc import ABC, abstractmethod
 from great_expectations.core.expectation_suite import ExpectationSuite
+from sqlalchemy import create_engine
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,11 @@ class BaseValidator(ABC):
 
     @abstractmethod
     def validate(
-        self, df: pd.DataFrame, column: str, rules_json_str: str
+        self,
+        df: pd.DataFrame,
+        column: str,
+        rules_json_str: str,
+        open_docs: bool = False,
     ) -> dict:
         """
         Validates a DataFrame column based on a set of rules.
@@ -59,8 +64,52 @@ class GreatExpectationsValidator(BaseValidator):
     A data validator that uses Great Expectations to validate data.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, datasource_config: dict = None):
+        logger.info("Initializing GreatExpectationsValidator...")
+        self.engine = None
+        self.reference_data_cache = {}
+
+        if datasource_config and datasource_config.get("type") in [
+            "postgresql",
+            "mysql",
+            "sqlite",
+        ]:
+            try:
+                db_type = datasource_config.get("type")
+                user = datasource_config.get("user")
+                host = datasource_config.get("host")
+                port = datasource_config.get("port", 5432)
+                db = datasource_config.get("db")
+                password = datasource_config.get("password", "")
+
+                connection_url = f"{db_type}://{user}:{password}@{host}:{port}/{db}"
+                self.engine = create_engine(connection_url)
+                logger.info("Validator created DB engine for FK checks.")
+            except Exception as e:
+                logger.warning(f"Validator failed to create DB engine: {e}")
+
+    def _get_reference_data(self, query: str, column: str) -> pd.Series:
+        cache_key = f"{query}_{column}"
+
+        if cache_key in self.reference_data_cache:
+            logger.info(f"Using cached reference data for: {cache_key}")
+            return self.reference_data_cache[cache_key]
+
+        if not self.engine:
+            logger.error("DB Engine not available. Cannot fetch reference data.")
+            raise ValueError("Validator DB Engine not initialized for FK check.")
+
+        logger.info(f"Fetching reference data: {query[:100]}...")
+        with self.engine.connect() as conn:
+            ref_df = pd.read_sql(query, conn)
+
+        if column not in ref_df.columns:
+            logger.error(f"Reference column '{column}' not found in query result.")
+            raise ValueError(f"Reference column '{column}' not found.")
+
+        ref_series = ref_df[column]
+        self.reference_data_cache[cache_key] = ref_series
+        return ref_series
 
     def validate(
         self,
@@ -112,11 +161,30 @@ class GreatExpectationsValidator(BaseValidator):
             try:
                 et = rule["expectation_type"]
                 kwargs = rule.get("kwargs", {})
+
+                if et == "expect_column_values_to_exist_in_other_table":
+                    logger.debug("Processing FK rule...")
+                    ref_query = kwargs.get("other_table_query")
+                    ref_column = kwargs.get("other_table_column")
+
+                    if ref_query and ref_column:
+                        ref_data_series = self._get_reference_data(
+                            ref_query, ref_column
+                        )
+
+                        del kwargs["other_table_query"]
+                        del kwargs["other_table_column"]
+                        kwargs["other_table_data"] = ref_data_series
+                    else:
+                        logger.warning("FK rule is missing query or column. Skipping.")
+                        continue
+
                 ExpClass = _snake_to_expect_class(et)
                 exp_obj = ExpClass(**kwargs)
                 suite.add_expectation(exp_obj)
                 added += 1
             except Exception as e:
+                logger.warning(f"Failed to add rule {rule}. Error: {e}")
                 pass
 
         context.suites.add_or_update(suite)
@@ -124,13 +192,13 @@ class GreatExpectationsValidator(BaseValidator):
         results = batch.validate(expect=suite)
 
         try:
-            logger.info("Building Data Docs (HTML Report)")
-
-            context.build_data_docs()
-
             if open_docs:
-                logger.info("Opening Data Docs (HTML Report)")
+                logger.info("Opening Data Docs in browser...")
+                context.build_data_docs()
                 context.open_data_docs()
+            elif results["statistics"]["unsuccessful_expectations"] > 0:
+                logger.info("Building Data Docs due to failures...")
+                context.build_data_docs()
         except Exception as e:
             logger.warning(f"Failed to build or open Data Docs: {e}")
 

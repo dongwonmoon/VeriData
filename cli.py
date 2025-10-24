@@ -71,6 +71,10 @@ def run(
 
     logger.info(f"Config loaded: {config}")
 
+    all_relationships = config.get("relationships", [])
+    logger.info(f"Loaded {len(all_relationships)} relationships from config.")
+    datasource_config = config["datasource"]
+
     if config["components"]["profiler"] == "pandas":
         profiler = PandasProfiler()
     else:
@@ -90,7 +94,7 @@ def run(
         raise ValueError(f"Unknown suggester type: {suggester_type}")
 
     if config["components"]["validator"] == "great_expectations":
-        validator = GreatExpectationsValidator()
+        validator = GreatExpectationsValidator(datasource_config=datasource_config)
     else:
         raise ValueError(f"Unknown validator: {config['components']['validator']}")
 
@@ -98,10 +102,9 @@ def run(
         profiler=profiler, suggester=suggester, validator=validator
     )
 
-    datasource_conifg = config["datasource"]
     try:
-        loader = get_loader(datasource_conifg)
-        df = loader.load(datasource_conifg)
+        loader = get_loader(datasource_config)
+        df = loader.load(datasource_config)
     except Exception as e:
         logger.error(f"Failed to load data: {e}")
         raise typer.Exit(code=1)
@@ -125,7 +128,24 @@ def run(
             logger.warning(f"Column '{col}' not found. Skipping.")
             continue
         logger.info(f"--- Processing column: {col} ---")
-        col_result = pipeline.run(df=df, column=col, open_docs=open_docs)
+
+        current_col_relationships = []
+        if all_relationships:
+            for rel in all_relationships:
+                if rel.get("from_column") == col:
+                    current_col_relationships.append(rel)
+
+        if current_col_relationships:
+            logger.info(
+                f"Found {len(current_col_relationships)} relationships for column '{col}'."
+            )
+
+        col_result = pipeline.run(
+            df=df,
+            column=col,
+            open_docs=open_docs,
+            relationships=current_col_relationships,
+        )
         results[col] = col_result
         logger.info(f"--- Finished column: {col} ---")
 
@@ -158,7 +178,7 @@ def document(
     if config["components"]["profiler"] == "pandas":
         profiler = PandasProfiler()
     else:
-        raise ValueError(f"Unknown suggester: {config['components']['suggester']}")
+        raise ValueError(f"Unknown profiler: {config['components']['profiler']}")
 
     doc_suggester = OllamaDocSuggester()
 
@@ -174,11 +194,7 @@ def document(
         logger.error("DataFrame is empty, pipeline stopped.")
         raise typer.Exit(code=1)
 
-    if df.empty:
-        logger.error("DataFrame is empty, pipeline stopped.")
-        raise typer.Exit(code=1)
-
-    columns_config = config.get("columns_to_document", [])
+    columns_config = config.get("columns_to_validate", [])
 
     if not columns_config or "__ALL__" in columns_config:
         columns = df.columns.tolist()
