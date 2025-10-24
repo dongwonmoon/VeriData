@@ -31,21 +31,13 @@ Veri-Data is a command-line tool that automates the process of data validation a
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/your-username/veri-data.git
+    git clone https://github.com/dongwonmoon/veri-data.git
     cd veri-data
     ```
 2.  Install the dependencies:
     ```bash
     pip install -r requirements.txt
     ```
-
-### Configuration
-
-1.  Copy the `config.yml.example` to `config.yml`:
-    ```bash
-    cp config.yml.example config.yml
-    ```
-2.  Edit the `config.yml` file to configure your data source, components, and columns to validate.
 
 ### Usage
 
