@@ -10,14 +10,19 @@ logger = logging.getLogger(__name__)
 
 class VeriDataPipeline:
     def __init__(
-        self, profiler: BaseProfiler, suggester: BaseSuggester, validator: BaseValidator
+        self,
+        profiler: BaseProfiler,
+        suggester: BaseSuggester,
+        validator: BaseValidator,
     ):
         logger.info("Initializing VeriDataPipeline...")
         self.profiler = profiler
         self.suggester = suggester
         self.validator = validator
 
-    def run(self, df: pd.DataFrame, column: str, open_docs: bool = False) -> dict:
+    def run(
+        self, df: pd.DataFrame, column: str, open_docs: bool = False
+    ) -> dict:
         logger.info(f"Running VeriDataPipeline for column '{column}'...")
 
         profile = self.profiler.profile(df, column)

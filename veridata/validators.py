@@ -24,7 +24,9 @@ def _snake_to_expect_class(expectation_type: str):
 
 class BaseValidator(ABC):
     @abstractmethod
-    def validate(self, df: pd.DataFrame, column: str, rules_json_str: str) -> dict:
+    def validate(
+        self, df: pd.DataFrame, column: str, rules_json_str: str
+    ) -> dict:
         pass
 
 
@@ -43,7 +45,10 @@ class GreatExpectationsValidator(BaseValidator):
         try:
             rules_list = json.loads(rules_json_str)
             if not isinstance(rules_list, list):
-                return {"success": False, "error": "LLM did not return a JSON list."}
+                return {
+                    "success": False,
+                    "error": "LLM did not return a JSON list.",
+                }
         except json.JSONDecodeError as e:
             return {"success": False, "error": f"Error decoding JSON: {e}"}
 
