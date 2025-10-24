@@ -5,7 +5,11 @@ import typer
 import yaml
 
 from veridata.profilers import PandasProfiler
-from veridata.suggesters import OllamaRuleSuggester, OllamaDocSuggester
+from veridata.suggesters import (
+    OllamaRuleSuggester,
+    OllamaDocSuggester,
+    OpenAIRuleSuggester,
+)
 from veridata.validators import GreatExpectationsValidator
 from veridata.pipeline import VeriDataPipeline
 
@@ -60,10 +64,20 @@ def run(
     else:
         raise ValueError(f"Unknown profiler: {config['components']['profiler']}")
 
-    if config["components"]["suggester"] == "ollama":
-        suggester = OllamaRuleSuggester()
+    suggester_config = config["components"]["suggester"]
+    suggester_type = suggester_config.get("type")
+    suggester_model = suggester_config.get("model")
+
+    if suggester_type == "ollama":
+        suggester = OllamaRuleSuggester(
+            model=suggester_model or "gemma3:1b"
+        )  # 기본값 설정
+    elif suggester_type == "openai":
+        if not suggester_model:
+            suggester_model = "gpt-4o-mini"  # OpenAI 기본값
+        suggester = OpenAIRuleSuggester(model=suggester_model)
     else:
-        raise ValueError(f"Unknown suggester: {config['components']['suggester']}")
+        raise ValueError(f"Unknown suggester type: {suggester_type}")
 
     if config["components"]["validator"] == "great_expectations":
         validator = GreatExpectationsValidator()

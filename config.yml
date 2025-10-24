@@ -4,7 +4,9 @@ datasource:
 
 components:
   profiler: pandas
-  suggester: ollama
+  suggester: 
+    type: ollama
+    model: gemma3:1b
   validator: great_expectations
 
 columns_to_validate:
