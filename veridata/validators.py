@@ -32,7 +32,13 @@ class GreatExpectationsValidator(BaseValidator):
     def __init__(self):
         pass
 
-    def validate(self, df: pd.DataFrame, column: str, rules_json_str: str) -> dict:
+    def validate(
+        self,
+        df: pd.DataFrame,
+        column: str,
+        rules_json_str: str,
+        open_docs: bool = False,
+    ) -> dict:
         logger.info(f"Validating data for {column}...")
         try:
             rules_list = json.loads(rules_json_str)
@@ -71,5 +77,16 @@ class GreatExpectationsValidator(BaseValidator):
         context.suites.add_or_update(suite)
 
         results = batch.validate(expect=suite)
+
+        try:
+            logger.info("Building Data Docs (HTML Report)")
+
+            context.build_data_docs()
+
+            if open_docs:
+                logger.info("Opening Data Docs (HTML Report)")
+                context.open_data_docs()
+        except Exception as e:
+            logger.warning(f"Failed to build or open Data Docs: {e}")
 
         return results if isinstance(results, dict) else results.to_json_dict()

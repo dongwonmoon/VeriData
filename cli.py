@@ -34,7 +34,12 @@ def run(
         "--config",
         "-c",
         help="Path to the VeriData config.yml file.",
-    )
+    ),
+    open_docs: bool = typer.Option(
+        False,
+        "--open",
+        help="Open the Great Expectations HTML report in a browser after validation.",
+    ),
 ):
     """
     VeriData 파이프라인을 config.yml 파일을 기반으로 실행합니다.
@@ -81,7 +86,7 @@ def run(
     results = {}
     for col in columns:
         logger.info(f"--- Processing column: {col} ---")
-        col_result = pipeline.run(df=df, column=col)
+        col_result = pipeline.run(df=df, column=col, open_docs=open_docs)
         results[col] = col_result
         logger.info(f"--- Finished column: {col} ---")
 

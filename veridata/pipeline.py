@@ -17,13 +17,15 @@ class VeriDataPipeline:
         self.suggester = suggester
         self.validator = validator
 
-    def run(self, df: pd.DataFrame, column: str) -> dict:
+    def run(self, df: pd.DataFrame, column: str, open_docs: bool = False) -> dict:
         logger.info(f"Running VeriDataPipeline for column '{column}'...")
 
         profile = self.profiler.profile(df, column)
         if profile:
             suggested_rules = self.suggester.suggest(profile)
-            validation_result = self.validator.validate(df, column, suggested_rules)
+            validation_result = self.validator.validate(
+                df, column, suggested_rules, open_docs=open_docs
+            )
             return validation_result
         else:
             logger.warning("Profile is empty, skipping rule suggestion.")
