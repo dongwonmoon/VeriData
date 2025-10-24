@@ -1,6 +1,11 @@
 datasource:
-  type: csv
-  path: "./sample.csv"
+  type: postgresql
+  host: localhost
+  port: 5432
+  user: your_user
+  password: your_password
+  db: your_db
+  query: "SELECT name, age, email FROM public.your_table LIMIT 1000"
 
 components:
   profiler: pandas

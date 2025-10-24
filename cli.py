@@ -4,6 +4,7 @@ import json
 import typer
 import yaml
 
+from veridata.loaders import BaseLoader, CsvLoader, SqlLoader
 from veridata.profilers import PandasProfiler
 from veridata.suggesters import (
     OllamaRuleSuggester,
@@ -19,6 +20,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = typer.Typer()
+
+
+def get_loader(datasource_config: dict) -> BaseLoader:
+    ds_type = datasource_config.get("type")
+    logger.info(f"Initializing DataLoader (Type: {ds_type})...")
+
+    if ds_type == "csv":
+        return CsvLoader()
+    elif ds_type in ["postgresql", "mysql", "sqlite"]:
+        return SqlLoader()
+    else:
+        raise ValueError(f"Unknown datasource type: {ds_type}")
 
 
 @app.command()
@@ -76,10 +89,16 @@ def run(
         profiler=profiler, suggester=suggester, validator=validator
     )
 
-    df_path = config["datasource"]["path"]
-    df = load_data(df_path)
+    datasource_conifg = config["datasource"]
+    try:
+        loader = get_loader(datasource_conifg)
+        df = loader.load(datasource_conifg)
+    except Exception as e:
+        logger.error(f"Failed to load data: {e}")
+        raise typer.Exit(code=1)
+
     if df.empty:
-        logger.error("DataFrame is empty, pipeline stopped.")
+        logger.error("DataFrame is empty. Pipeline stopped.")
         raise typer.Exit(code=1)
 
     columns_config = config.get("columns_to_validate", [])
@@ -131,8 +150,18 @@ def document(
 
     doc_suggester = OllamaDocSuggester()
 
-    df_path = config["datasource"]["path"]
-    df = load_data(df_path)
+    datasource_config = config["datasource"]
+    try:
+        loader = get_loader(datasource_config)
+        df = loader.load(datasource_config)
+    except Exception as e:
+        logger.error(f"Failed to initialize loader or load data: {e}")
+        raise typer.Exit(code=1)
+
+    if df.empty:
+        logger.error("DataFrame is empty, pipeline stopped.")
+        raise typer.Exit(code=1)
+
     if df.empty:
         logger.error("DataFrame is empty, pipeline stopped.")
         raise typer.Exit(code=1)
