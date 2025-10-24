@@ -18,16 +18,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
-def load_data(csv_path: str) -> pd.DataFrame:
-    logger.info(f"S1: Loading data from {csv_path}")
-    try:
-        return pd.read_csv(csv_path)
-    except FileNotFoundError:
-        logger.error(f"File not found: {csv_path}")
-        return pd.DataFrame()
-
-
 app = typer.Typer()
 
 
@@ -62,21 +52,17 @@ def run(
     if config["components"]["profiler"] == "pandas":
         profiler = PandasProfiler()
     else:
-        raise ValueError(
-            f"Unknown profiler: {config['components']['profiler']}"
-        )
+        raise ValueError(f"Unknown profiler: {config['components']['profiler']}")
 
     suggester_config = config["components"]["suggester"]
     suggester_type = suggester_config.get("type")
     suggester_model = suggester_config.get("model")
 
     if suggester_type == "ollama":
-        suggester = OllamaRuleSuggester(
-            model=suggester_model or "gemma3:1b"
-        )  # 기본값 설정
+        suggester = OllamaRuleSuggester(model=suggester_model or "gemma3:1b")
     elif suggester_type == "openai":
         if not suggester_model:
-            suggester_model = "gpt-4o-mini"  # OpenAI 기본값
+            suggester_model = "gpt-4o-mini"
         suggester = OpenAIRuleSuggester(model=suggester_model)
     else:
         raise ValueError(f"Unknown suggester type: {suggester_type}")
@@ -84,9 +70,7 @@ def run(
     if config["components"]["validator"] == "great_expectations":
         validator = GreatExpectationsValidator()
     else:
-        raise ValueError(
-            f"Unknown validator: {config['components']['validator']}"
-        )
+        raise ValueError(f"Unknown validator: {config['components']['validator']}")
 
     pipeline = VeriDataPipeline(
         profiler=profiler, suggester=suggester, validator=validator
@@ -98,11 +82,20 @@ def run(
         logger.error("DataFrame is empty, pipeline stopped.")
         raise typer.Exit(code=1)
 
-    columns = config["columns_to_validate"]
-    logger.info(f"Target columns: {columns}")
+    columns_config = config.get("columns_to_validate", [])
+
+    if not columns_config or "__ALL__" in columns_config:
+        columns_to_run = df.columns.tolist()
+    else:
+        columns_to_run = columns_config
+
+    logger.info(f"Target columns for validation: {columns_to_run}")
 
     results = {}
-    for col in columns:
+    for col in columns_to_run:
+        if col not in df.columns:
+            logger.warning(f"Column '{col}' not found. Skipping.")
+            continue
         logger.info(f"--- Processing column: {col} ---")
         col_result = pipeline.run(df=df, column=col, open_docs=open_docs)
         results[col] = col_result
@@ -134,9 +127,7 @@ def document(
     if config["components"]["profiler"] == "pandas":
         profiler = PandasProfiler()
     else:
-        raise ValueError(
-            f"Unknown suggester: {config['components']['suggester']}"
-        )
+        raise ValueError(f"Unknown suggester: {config['components']['suggester']}")
 
     doc_suggester = OllamaDocSuggester()
 
@@ -146,7 +137,13 @@ def document(
         logger.error("DataFrame is empty, pipeline stopped.")
         raise typer.Exit(code=1)
 
-    columns = config["columns_to_validate"]
+    columns_config = config.get("columns_to_document", [])
+
+    if not columns_config or "__ALL__" in columns_config:
+        columns = df.columns.tolist()
+    else:
+        columns = columns_config
+
     logger.info(f"Target columns for documentation: {columns}")
 
     print("\n--- VeriData Auto-Documentation ---")
