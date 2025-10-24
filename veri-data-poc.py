@@ -13,6 +13,7 @@ from langchain_core.output_parsers import StrOutputParser
 from veridata.profilers import PandasProfiler
 from veridata.suggesters import OllamaRuleSuggester
 from veridata.validators import GreatExpectationsValidator
+from veridata.pipeline import VeriDataPipeline
 
 
 logging.basicConfig(
@@ -36,17 +37,13 @@ if __name__ == "__main__":
     suggester = OllamaRuleSuggester()
     validator = GreatExpectationsValidator()
 
-    if not df.empty:
-        profile = profiler.profile(df, "age")
-        if profile:
-            suggested_rules = suggester.suggest(profile)
-            print("--- LLM Suggested Rules ---")
-            print(suggested_rules)
+    pipeline = VeriDataPipeline(
+        profiler=profiler, suggester=suggester, validator=validator
+    )
 
-            validation_result = validator.validate(df, "age", suggested_rules)
-            print("\n--- Validation Results ---")
-            print(json.dumps(validation_result, indent=2))
-        else:
-            logger.warning("Profile is empty, skipping rule suggestion.")
+    if not df.empty:
+        validation_result = pipeline.run(df=df, column="age")
+
+        print(f"Validation Result: {validation_result}")
     else:
-        logger.warning("DataFrame is empty, pipeline stopped.")
+        logger.warning("DataFrame is empty, skipping validation.")
