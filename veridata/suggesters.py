@@ -110,12 +110,16 @@ class OllamaRuleSuggester(BaseSuggester):
     def __init__(self, model: str = "gemma3:1b"):
         logger.info(f"Initializing OllamaRuleSuggester with model '{model}'...")
         self.llm = ChatOllama(model=model, format="json")
-        self.prompt_template = ChatPromptTemplate.from_template(RULE_SUGGESTER_PROMPT)
+        self.prompt_template = ChatPromptTemplate.from_template(
+            RULE_SUGGESTER_PROMPT
+        )
         self.parser = StrOutputParser()
         self.chain = self.prompt_template | self.llm | self.parser
 
     def suggest(self, profile: dict) -> str:
-        logger.info(f"Suggesting rules via LLM for '{profile['column_name']}'...")
+        logger.info(
+            f"Suggesting rules via LLM for '{profile['column_name']}'..."
+        )
         profile_text = json.dumps(profile, indent=2)
         response = self.chain.invoke({"profile_text": profile_text})
         logger.info(f"LLM Raw Output: {response}")
@@ -129,7 +133,9 @@ class OllamaDocSuggester(BaseSuggester):
 
         self.llm = ChatOllama(model=model)
 
-        self.prompt_template = ChatPromptTemplate.from_template(DOC_SUGGESTER_PROMPT)
+        self.prompt_template = ChatPromptTemplate.from_template(
+            DOC_SUGGESTER_PROMPT
+        )
         self.parser = StrOutputParser()
         self.chain = self.prompt_template | self.llm | self.parser
 
@@ -155,12 +161,16 @@ class OpenAIRuleSuggester(BaseSuggester):
             model_kwargs={"response_format": {"type": "json_object"}},
         )
 
-        self.prompt_template = ChatPromptTemplate.from_template(RULE_SUGGESTER_PROMPT)
+        self.prompt_template = ChatPromptTemplate.from_template(
+            RULE_SUGGESTER_PROMPT
+        )
         self.parser = StrOutputParser()
         self.chain = self.prompt_template | self.llm | self.parser
 
     def suggest(self, profile: dict) -> str:
-        logger.info(f"Suggesting rules via LLM for '{profile['column_name']}'...")
+        logger.info(
+            f"Suggesting rules via LLM for '{profile['column_name']}'..."
+        )
         profile_text = json.dumps(profile, indent=2)
 
         response = self.chain.invoke({"profile_text": profile_text})

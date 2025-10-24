@@ -62,7 +62,9 @@ def run(
     if config["components"]["profiler"] == "pandas":
         profiler = PandasProfiler()
     else:
-        raise ValueError(f"Unknown profiler: {config['components']['profiler']}")
+        raise ValueError(
+            f"Unknown profiler: {config['components']['profiler']}"
+        )
 
     suggester_config = config["components"]["suggester"]
     suggester_type = suggester_config.get("type")
@@ -82,7 +84,9 @@ def run(
     if config["components"]["validator"] == "great_expectations":
         validator = GreatExpectationsValidator()
     else:
-        raise ValueError(f"Unknown validator: {config['components']['validator']}")
+        raise ValueError(
+            f"Unknown validator: {config['components']['validator']}"
+        )
 
     pipeline = VeriDataPipeline(
         profiler=profiler, suggester=suggester, validator=validator
@@ -130,7 +134,9 @@ def document(
     if config["components"]["profiler"] == "pandas":
         profiler = PandasProfiler()
     else:
-        raise ValueError(f"Unknown suggester: {config['components']['suggester']}")
+        raise ValueError(
+            f"Unknown suggester: {config['components']['suggester']}"
+        )
 
     doc_suggester = OllamaDocSuggester()
 
