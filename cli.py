@@ -5,7 +5,7 @@ import typer
 import yaml
 
 from veridata.profilers import PandasProfiler
-from veridata.suggesters import OllamaRuleSuggester
+from veridata.suggesters import OllamaRuleSuggester, OllamaDocSuggester
 from veridata.validators import GreatExpectationsValidator
 from veridata.pipeline import VeriDataPipeline
 
@@ -88,6 +88,63 @@ def run(
     logger.info("=== All columns processed ===")
     print("\n--- Final Validation Report ---")
     print(json.dumps(results, indent=2))
+
+
+@app.command()
+def document(
+    config_path: str = typer.Option(
+        "config.yml",
+        "--config",
+        "-c",
+        help="Path to the VeriData config.yml file.",
+    )
+):
+    logger.info(f"Loading configuration from: {config_path}")
+
+    try:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        logger.error(f"Config file not found: {config_path}")
+        raise typer.Exit(code=1)
+
+    if config["components"]["profiler"] == "pandas":
+        profiler = PandasProfiler()
+    else:
+        raise ValueError(f"Unknown suggester: {config['components']['suggester']}")
+
+    doc_suggester = OllamaDocSuggester()
+
+    df_path = config["datasource"]["path"]
+    df = load_data(df_path)
+    if df.empty:
+        logger.error("DataFrame is empty, pipeline stopped.")
+        raise typer.Exit(code=1)
+
+    columns = config["columns_to_validate"]
+    logger.info(f"Target columns for documentation: {columns}")
+
+    print("\n--- VeriData Auto-Documentation ---")
+
+    for col in columns:
+        if col not in df.columns:
+            logger.warning(f"Column '{col}' not found. Skipping.")
+            continue
+
+        logger.info(f"Generating doc for column: {col} ...")
+
+        profile = profiler.profile(df=df, column=col)
+
+        if not profile:
+            logger.warning(f"Could not generate profile for '{col}'. Skipping.")
+            continue
+
+        description = doc_suggester.suggest(profile)
+
+        print(f"\n## {col}")
+        print(description)
+
+    print("\n--- Documentation Generation Finished ---")
 
 
 if __name__ == "__main__":

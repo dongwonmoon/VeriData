@@ -94,3 +94,47 @@ class OllamaRuleSuggester(BaseSuggester):
         logger.info(f"LLM Raw Output: {response}")
         rules_list = parse_llm_rules(response)
         return json.dumps(rules_list, indent=2)
+
+
+class OllamaDocSuggester(BaseSuggester):
+    def __init__(self, model: str = "gemma3:1b"):
+        logger.info(f"Initializing OllamaDocSuggester with model '{model}'...")
+
+        self.llm = ChatOllama(model=model)
+
+        self.prompt_template = ChatPromptTemplate.from_template(
+            """
+            You are a Data Catalog Assistant. Your job is to write a concise, 
+            one-sentence markdown description for a database column based on its profile.
+            
+            - Only output the description text. 
+            - Do NOT include the column name (e.g., "This column is...")
+            - Do NOT use markdown formatting (e.g., bold, italics).
+            
+            Data Profile:
+            {profile_text}
+            
+            Example 1 Profile: {{ "column_name": "age", "min": 18, "max": 65, ... }}
+            Example 1 Output: Represents the user's age, typically between 18 and 65.
+            
+            Example 2 Profile: {{ "column_name": "email_addr", "null_percentage": 0.1, ... }}
+            Example 2 Output: The user's email address (can be null).
+
+            Your turn.
+            Data Profile:
+            {profile_text}
+            
+            Output:
+            """
+        )
+        self.parser = StrOutputParser()
+        self.chain = self.prompt_template | self.llm | self.parser
+
+    def suggest(self, profile: dict) -> str:
+        logger.info(
+            f"Suggesting documentation via LLM for '{profile['column_name']}'..."
+        )
+        profile_text = json.dumps(profile, indent=2)
+        response = self.chain.invoke({"profile_text": profile_text})
+        logger.info(f"LLM Raw Output: {response}")
+        return response
