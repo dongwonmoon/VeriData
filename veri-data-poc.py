@@ -10,6 +10,8 @@ from langchain_ollama.chat_models import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
+from veridata.profilers import PandasProfiler
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -62,32 +64,6 @@ def load_data(csv_path: str) -> pd.DataFrame:
     except FileNotFoundError:
         logger.error(f"File not found: {csv_path}")
         return pd.DataFrame()
-
-
-def profile_data(df: pd.DataFrame, column: str) -> dict:
-    logger.info(f"S2: Profiling column '{column}'...")
-    if column not in df.columns:
-        logger.error(f"Column '{column}' not found in DataFrame.")
-        return {}
-    series = df[column]
-    dtype = series.dtype
-    min_value = None
-    max_value = None
-    if pd.api.types.is_numeric_dtype(dtype):
-        min_value = series.min()
-        max_value = series.max()
-    top_5_samples = series.value_counts().head(5).index.tolist()
-    profile = {
-        "column_name": column,
-        "data_type": str(dtype),
-        "null_percentage": (series.isnull().mean() * 100).item(),
-        "unique_values_count": series.nunique(),
-        "min": min_value.item() if min_value is not None else None,
-        "max": max_value.item() if max_value is not None else None,
-        "top_5_samples": top_5_samples,
-    }
-    logger.info(f"Profile for '{column}': {profile}")
-    return profile
 
 
 def suggest_rules_json(profile: dict) -> str:
@@ -195,8 +171,9 @@ def validate_data(df, column: str, rules_json_str: str) -> dict:
 
 if __name__ == "__main__":
     df = load_data("./sample.csv")
+    profiler = PandasProfiler()
     if not df.empty:
-        profile = profile_data(df, "age")
+        profile = profiler.profile(df, "age")
         if profile:
             suggested_rules = suggest_rules_json(profile)
             print("--- LLM Suggested Rules ---")
