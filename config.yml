@@ -1,0 +1,12 @@
+datasource:
+  type: csv
+  path: "./sample.csv"
+
+components:
+  profiler: pandas
+  suggester: ollama
+  validator: great_expectations
+
+columns_to_validate:
+  - age
+  - user_email

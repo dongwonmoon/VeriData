@@ -1,0 +1,94 @@
+import pandas as pd
+import logging
+import json
+import typer
+import yaml
+
+from veridata.profilers import PandasProfiler
+from veridata.suggesters import OllamaRuleSuggester
+from veridata.validators import GreatExpectationsValidator
+from veridata.pipeline import VeriDataPipeline
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+
+def load_data(csv_path: str) -> pd.DataFrame:
+    logger.info(f"S1: Loading data from {csv_path}")
+    try:
+        return pd.read_csv(csv_path)
+    except FileNotFoundError:
+        logger.error(f"File not found: {csv_path}")
+        return pd.DataFrame()
+
+
+app = typer.Typer()
+
+
+@app.command()
+def run(
+    config_path: str = typer.Option(
+        "config.yml",
+        "--config",
+        "-c",
+        help="Path to the VeriData config.yml file.",
+    )
+):
+    """
+    VeriData 파이프라인을 config.yml 파일을 기반으로 실행합니다.
+    """
+    logger.info(f"Loading configuration from: {config_path}")
+
+    try:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        logger.error(f"Config file not found: {config_path}")
+        raise typer.Exit(code=1)
+
+    logger.info(f"Config loaded: {config}")
+
+    if config["components"]["profiler"] == "pandas":
+        profiler = PandasProfiler()
+    else:
+        raise ValueError(f"Unknown profiler: {config['components']['profiler']}")
+
+    if config["components"]["suggester"] == "ollama":
+        suggester = OllamaRuleSuggester()
+    else:
+        raise ValueError(f"Unknown suggester: {config['components']['suggester']}")
+
+    if config["components"]["validator"] == "great_expectations":
+        validator = GreatExpectationsValidator()
+    else:
+        raise ValueError(f"Unknown validator: {config['components']['validator']}")
+
+    pipeline = VeriDataPipeline(
+        profiler=profiler, suggester=suggester, validator=validator
+    )
+
+    df_path = config["datasource"]["path"]
+    df = load_data(df_path)
+    if df.empty:
+        logger.error("DataFrame is empty, pipeline stopped.")
+        raise typer.Exit(code=1)
+
+    columns = config["columns_to_validate"]
+    logger.info(f"Target columns: {columns}")
+
+    results = {}
+    for col in columns:
+        logger.info(f"--- Processing column: {col} ---")
+        col_result = pipeline.run(df=df, column=col)
+        results[col] = col_result
+        logger.info(f"--- Finished column: {col} ---")
+
+    logger.info("=== All columns processed ===")
+    print("\n--- Final Validation Report ---")
+    print(json.dumps(results, indent=2))
+
+
+if __name__ == "__main__":
+    app()
